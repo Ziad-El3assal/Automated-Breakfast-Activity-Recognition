@@ -5,6 +5,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import torchvision.io as io
+import PIL
 
 class BreakfastActionsDataset(Dataset):
     def __init__(self, root_dir, transform=None):
@@ -12,44 +13,46 @@ class BreakfastActionsDataset(Dataset):
         self.transform = transform
         self.video_paths = []
         self.labels = []
-        self.classes = sorted(os.listdir(root_dir))
-
-        for class_idx, class_name in enumerate(self.classes):
-            class_dir = os.path.join(root_dir, class_name)
-            if os.path.isdir(class_dir):
-                for video_name in os.listdir(class_dir):
-                    video_path = os.path.join(class_dir, video_name)
-                    if os.path.isfile(video_path):
-                        self.video_paths.append(video_path)
-                        self.labels.append(class_idx)
-
+        self.samples = sorted(os.listdir(root_dir))
+        
+        self.labelDict=dict(zip(['cereals','coffee','friedegg','juice','milk','pancake','salat','sandwich','scrambledegg','tea'],range(10)))
+        for person in self.samples:
+            label=person.split('_')[1]
+            label=self.labelDict[label]
+            for frame in os.listdir(os.path.join(root_dir,person)):
+                self.video_paths.append(os.path.join(root_dir,person,frame))
+                self.labels.append(label)
     def __len__(self):
         return len(self.video_paths)
 
     def __getitem__(self, idx):
-        video_path = self.video_paths[idx]
+        frame_path = self.video_paths[idx]
         label = self.labels[idx]
-        video_frames, _, _ = io.read_video(video_path, pts_unit='sec')
+        frame= PIL.Image.open(frame_path)
 
         if self.transform:
-            video_frames = self.transform(video_frames)
+            frame = self.transform(frame)
 
-        return video_frames, label
+        return frame, label
 
 # Transformations
 transform = transforms.Compose([
-    transforms.Resize((64, 64)),
-    transforms.RandomCrop((64, 64)),
+    transforms.Resize((28, 28)),
+    transforms.RandomCrop((28, 28)),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor()
 ])
 
-batch_size = 32
-train_dir = 'Breakfast Action Recognition\\train'
-valid_dir = 'Breakfast Action Recognition\\valid'
-# Create datasets and dataloaders
-train_dataset = BreakfastActionsDataset(train_dir, transform=transform)
-valid_dataset = BreakfastActionsDataset(valid_dir, transform=transform)
+# tst = BreakfastActionsDataset('Breakfast Action Recognition\\train')
 
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
+
+# def create_data_loader(root_dir, batch_size=1, shuffle=False):
+#     dataset = BreakfastActionsDataset(root_dir, transform=transform)
+#     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
+
+# df= create_data_loader('..\data\\train')
+# for i in df:
+#     print(i)
+#     break
+print('DataLoader loaded')
